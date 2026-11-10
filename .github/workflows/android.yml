@@ -15,17 +15,22 @@ jobs:
           distribution: temurin
           java-version: '21'
       - name: Install official Android SDK packages
-        run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "system-images;android-30;default;x86_64"
+        run: |
+          sdkmanager_path=$(find "$ANDROID_HOME/cmdline-tools" -maxdepth 3 -type f -name sdkmanager | sort -V | tail -n 1)
+          test -x "$sdkmanager_path"
+          printf '%s\n' "$(dirname "$sdkmanager_path")" "$ANDROID_HOME/platform-tools" >> "$GITHUB_PATH"
+          "$sdkmanager_path" --sdk_root="$ANDROID_HOME" "platforms;android-36" "build-tools;36.0.0" "platform-tools" "emulator" "system-images;android-30;default;x86_64"
       - name: Build and test
         run: |
-          python3 scripts/build.py --core-test --tests
+          python3 scripts/build.py --platform android-36 --build-tools 36.0.0 --core-test --tests
           python3 tests/sqlite_check.py
       - name: Start a fresh headless emulator
         run: |
+          trap 'cat "$RUNNER_TEMP/emulator.log" 2>/dev/null || true' ERR
           sudo chmod a+rw /dev/kvm
           printf 'no\n' | avdmanager create avd -n small-pos-ci -k 'system-images;android-30;default;x86_64'
           "$ANDROID_HOME/emulator/emulator" -avd small-pos-ci -no-window -no-audio -no-snapshot -gpu swiftshader_indirect > "$RUNNER_TEMP/emulator.log" 2>&1 &
-          adb -s emulator-5554 wait-for-device
+          timeout 120s adb -s emulator-5554 wait-for-device
           for attempt in $(seq 1 120); do
             if [ "$(adb -s emulator-5554 shell getprop sys.boot_completed | tr -d '\r')" = '1' ]; then exit 0; fi
             sleep 2
