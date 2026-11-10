@@ -1,0 +1,14 @@
+/build/
+*.p12
+*.jks
+*password*
+*.sqlite*
+*.db
+small-pos-*.json
+local.properties
+.idea/
+__pycache__/
+*.pyc
+/release/*.apk
+/release/SHA256SUMS
+*.idsig
