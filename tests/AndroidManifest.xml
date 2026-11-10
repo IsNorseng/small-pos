@@ -1,0 +1,5 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="ru.smallpos.tests">
+  <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="36" />
+  <application android:label="Small POS tests" />
+  <instrumentation android:name="ru.smallpos.app.RetailInstrumentation" android:targetPackage="ru.smallpos.app" android:label="Small POS native tests" />
+</manifest>
