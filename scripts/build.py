@@ -23,6 +23,8 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--sdk',default=os.environ.get('ANDROID_HOME') or os.environ.get('ANDROID_SDK_ROOT'))
     p.add_argument('--java',default=os.environ.get('JAVA_HOME'))
+    p.add_argument('--platform',help='Select an installed platform, for example android-36')
+    p.add_argument('--build-tools',help='Select an installed Build Tools version, for example 36.0.0')
     p.add_argument('--output',type=Path,default=ROOT/'build'/'small-pos.apk')
     p.add_argument('--signing-dir',type=Path,default=ROOT/'build'/'signing')
     p.add_argument('--tests',action='store_true',help='Also build Android instrumentation APK')
@@ -34,11 +36,14 @@ def main():
     suffix='.exe' if os.name=='nt' else ''
     def j(tool):return java/(tool+suffix)
     versions=lambda v:tuple(int(n) for n in re.findall(r'\d+',v.name))
-    platforms=sorted((sdk/'platforms').glob('android-*'),key=versions)
-    tools=sorted((sdk/'build-tools').glob('*'),key=versions)
+    platforms=sorted((p for p in (sdk/'platforms').glob('android-*')
+                      if re.fullmatch(r'android-\d+(?:\.\d+)?',p.name) and (p/'android.jar').is_file()),key=versions)
+    tools=sorted((p for p in (sdk/'build-tools').iterdir() if p.is_dir() and re.fullmatch(r'\d+(?:\.\d+)+',p.name)),key=versions) if (sdk/'build-tools').is_dir() else []
+    if a.platform:platforms=[p for p in platforms if p.name==a.platform]
+    if a.build_tools:tools=[p for p in tools if p.name==a.build_tools]
     if not platforms or not tools:p.error('Install Android platform 36+ and build-tools 36+ in the SDK.')
     platform,bt=platforms[-1],tools[-1]
-    if versions(platform)[0]<36:p.error('Android compile platform 36+ is required.')
+    if versions(platform)[0]<36 or versions(bt)[0]<36:p.error('Android compile platform and Build Tools 36+ are required.')
     android=platform/'android.jar'
     def b(tool):return bt/(tool+('.bat' if os.name=='nt' and tool in ('d8','apksigner') else suffix))
     work=ROOT/'build'/'intermediates';work.mkdir(parents=True,exist_ok=True)
