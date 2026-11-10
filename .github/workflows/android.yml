@@ -28,8 +28,13 @@ jobs:
         run: |
           trap 'cat "$RUNNER_TEMP/emulator.log" 2>/dev/null || true' ERR
           sudo chmod a+rw /dev/kvm
-          printf 'no\n' | avdmanager create avd -n small-pos-ci -k 'system-images;android-30;default;x86_64'
-          "$ANDROID_HOME/emulator/emulator" -avd small-pos-ci -no-window -no-audio -no-snapshot -gpu swiftshader_indirect > "$RUNNER_TEMP/emulator.log" 2>&1 &
+          export ANDROID_USER_HOME="$RUNNER_TEMP/small-pos-android"
+          export ANDROID_AVD_HOME="$ANDROID_USER_HOME/avd"
+          mkdir -p "$ANDROID_AVD_HOME"
+          avdmanager create avd -n small-pos-ci -d pixel_2 -p "$ANDROID_AVD_HOME/small-pos-ci.avd" -k 'system-images;android-30;default;x86_64'
+          test -f "$ANDROID_AVD_HOME/small-pos-ci.ini"
+          adb start-server
+          "$ANDROID_HOME/emulator/emulator" -avd small-pos-ci -port 5554 -no-window -no-audio -no-snapshot -no-boot-anim -gpu swiftshader -feature -Vulkan > "$RUNNER_TEMP/emulator.log" 2>&1 &
           timeout 120s adb -s emulator-5554 wait-for-device
           for attempt in $(seq 1 120); do
             if [ "$(adb -s emulator-5554 shell getprop sys.boot_completed | tr -d '\r')" = '1' ]; then exit 0; fi
